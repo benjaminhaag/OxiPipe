@@ -1,20 +1,27 @@
 use log::{debug, info, error};
 use serde::{Deserialize, Serialize};
+use serde_yaml;
 use bollard::Docker;
 use bollard::container::{Config, CreateContainerOptions, StartContainerOptions, LogsOptions};
 use bollard::models::HostConfig;
 use futures::StreamExt;
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Job {
-    id: String,
     image: String,
     command: Vec<String>,
-    env: Option<Vec<(String, String)>>
+    environment: Option<Vec<String>>,
+    triggers: Option<Vec<String>>
 }
 
-async fn run_job(docker: &Docker, job: &Job) {
-    info!("starting job {}", job.id);
+#[derive(Debug, Serialize, Deserialize)]
+struct Pipeline {
+    jobs: HashMap<String, Job>
+}
+
+async fn run_job(docker: &Docker, job: &Job, name: String) {
+    info!("starting job {}", name);
 
     // Pull the image if not present
     debug!("downloading image {}", job.image);
@@ -41,13 +48,8 @@ async fn run_job(docker: &Docker, job: &Job) {
         }
     }
 
-    // Prepare environment
-    let env_vars = job.env.as_ref().map(|pairs| {
-        pairs.iter().map(|(k, v)| format!("{}={}", k, v)).collect()
-    });
-    
     // Create container
-    let container_name = format!("oxipipe-{}", job.id);
+    let container_name = format!("oxipipe-{}", name);
     let create_result = docker
         .create_container(
             Some(CreateContainerOptions { 
@@ -57,7 +59,7 @@ async fn run_job(docker: &Docker, job: &Job) {
             Config {
                 image: Some(job.image.clone()),
                 cmd: Some(job.command.clone()),
-                env: env_vars,
+                env: job.environment.clone(),
                 host_config: Some(HostConfig {
                     auto_remove: Some(true), // automatically clean up
                     ..Default::default()
@@ -77,8 +79,7 @@ async fn run_job(docker: &Docker, job: &Job) {
 
     // Start the container
     info!("Starting container: {}", container);
-    if let Err(e) = docker.start_container(&container, None::<StartContainerOptions<String>>).await {
-        error!("Error starting container: {}", e);
+    if let Err(e) = docker.start_container(&container, None::<StartContainerOptions<String>>).await {  error!("Error starting container: {}", e);
         return;
     }
 
@@ -100,7 +101,13 @@ async fn run_job(docker: &Docker, job: &Job) {
         }
     }
 
-    info!("Job {} completed.", job.id);
+    info!("Job {} completed.", name);
+}
+
+fn load_pipeline_from_file(file_path: &str) -> Result<Pipeline, Box<dyn std::error::Error>> {
+    let yaml_str = std::fs::read_to_string(file_path)?;
+    let pipeline: Pipeline = serde_yaml::from_str(&yaml_str)?;
+    Ok(pipeline)
 }
 
 #[tokio::main]
@@ -111,15 +118,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let docker = Docker::connect_with_local_defaults().unwrap();
 
-    let job = Job {
-        id: "example-job-1".to_string(),
-        image: "alpine:latest".to_string(),
-        command: vec!["echo".to_string(), "Hello, from OxiPipe!".to_string()],
-        env: None,
-    };
+    let mut queue = VecDeque::new();
 
-    run_job(&docker, &job).await;
+    let pipeline = load_pipeline_from_file("examples/hello.yml")?;
+
+    let start_job = "hello".to_string();
     
+    let job = pipeline.jobs.get(&start_job).unwrap();
+    queue.push_back((start_job.clone(), job));
+
+    while let Some((name, job)) = queue.pop_front() {
+        run_job(&docker, job, name).await;
+        if let Some(triggers) = &job.triggers {
+            for triggered_job_name in triggers {
+                if let Some(triggered_job) = pipeline.jobs.get(triggered_job_name) {
+                    queue.push_back((triggered_job_name.clone(), triggered_job));
+                } else {
+                    error!("Triggered job '{}' not found.", triggered_job_name);
+                }
+            }
+        }
+    }
 
     Ok(())
 }
