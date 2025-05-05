@@ -1,0 +1,11 @@
+jobs:
+  hello:
+    image: alpine:latest
+    command: ["echo", "Hello World"]
+    triggers: 
+      - bye
+  bye:
+    image: alpine:latest
+    environment:
+      - "NAME=Benny"
+    command: ["sh", "-c", "echo Bye $NAME"]
