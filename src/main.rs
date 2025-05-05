@@ -6,13 +6,17 @@ use bollard::container::{Config, CreateContainerOptions, StartContainerOptions, 
 use bollard::models::HostConfig;
 use futures::StreamExt;
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
+use std::fs;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Job {
     image: String,
     command: Vec<String>,
     environment: Option<Vec<String>>,
-    triggers: Option<Vec<String>>
+    artifacts: Option<String>,
+    triggers: Option<Vec<String>>,
+    dependencies: Option<Vec<String>>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,6 +54,24 @@ async fn run_job(docker: &Docker, job: &Job, name: String) {
 
     // Create container
     let container_name = format!("oxipipe-{}", name);
+    
+    let mut mounts: Vec<String> = Vec::new();
+
+    if let Some(artifacts_path) = &job.artifacts {
+        let mount_path = format!("/tmp/oxipipe/artifacts/{}", name);
+        fs::create_dir_all(&mount_path).unwrap();
+        let mount = format!("{}:{}",mount_path, artifacts_path);
+        mounts.push(mount);
+    }
+
+    if let Some(dependencies) = &job.dependencies {
+        for dep in dependencies {
+            let dep_artifact_path = format!("/tmp/oxipipe/artifacts/{}", dep);
+            let mount = format!("{}:/artifacts/{}", dep_artifact_path, dep);
+            mounts.push(mount);
+        }
+    }
+
     let create_result = docker
         .create_container(
             Some(CreateContainerOptions { 
@@ -61,7 +83,8 @@ async fn run_job(docker: &Docker, job: &Job, name: String) {
                 cmd: Some(job.command.clone()),
                 env: job.environment.clone(),
                 host_config: Some(HostConfig {
-                    auto_remove: Some(true), // automatically clean up
+                    auto_remove: Some(true),
+                    binds: Some(mounts),
                     ..Default::default()
                 }),
                 ..Default::default()
