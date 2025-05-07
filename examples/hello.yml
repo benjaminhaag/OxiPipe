@@ -5,6 +5,7 @@ jobs:
       - "NAME=Benny"
     command: ["sh", "-c", "echo $NAME > /workspace/test.txt"]
     artifacts: "/workspace"
+    schedule: "@every 10s"
     triggers: 
       - bye
   bye:

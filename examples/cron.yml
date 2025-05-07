@@ -1,0 +1,12 @@
+jobs:
+  ten_seconds:
+    image: alpine:latest
+    environment:
+      - "NAME=Benny"
+    command: ["sh", "-c", "echo Hello"]
+    schedule: "@every 10s"
+
+  minute:
+    image: alpine:latest
+    command: ["sh", "-c", "echo Hello"]
+    schedule: "20 * * * * *"

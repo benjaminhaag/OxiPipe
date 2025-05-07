@@ -14,6 +14,7 @@ pub struct Job {
     pub command: Vec<String>,
     pub environment: Option<Vec<String>>,
     pub artifacts: Option<String>,
+    pub schedule: Option<String>,
     pub triggers: Option<Vec<String>>,
     pub dependencies: Option<Vec<String>>
 }
