@@ -45,10 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let queue = JobQueue::new(1);
     
-    // let docker = Docker::connect_with_local_defaults().unwrap();
-
-
-    
     tokio::join!(
         chroniq::start(schedules, queue.clone(), pipeline.clone()),
         web::start(),

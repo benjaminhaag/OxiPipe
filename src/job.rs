@@ -22,8 +22,8 @@ pub struct Job {
 
 
 impl Job {
-    pub async fn run(&self, docker: &Docker, name: String) {
-        info!("starting job {}", name);
+    pub async fn run(&self, docker: &Docker) {
+        info!("starting job {}", self.name.clone().unwrap());
 
         // Pull the image if not present
         if let Err(e) = self.pull_image(docker).await {
@@ -33,7 +33,7 @@ impl Job {
 
         // Create container
         
-        let mounts = match self.prepare_mounts(&name) {
+        let mounts = match self.prepare_mounts(&self.name.clone().unwrap()) {
             Ok(m) => m,
             Err(e) => {
                 error!("Failed to prepare mounts: {}", e);
@@ -42,7 +42,7 @@ impl Job {
         };
 
 
-        let container = match self.create_container(docker, &name, mounts).await {
+        let container = match self.create_container(docker, &self.name.clone().unwrap(), mounts).await {
             Ok(id) => id,
             Err(e) => {
                 error!("Error creating container: {}", e);
@@ -58,11 +58,11 @@ impl Job {
         }
 
         // Get logs
-        if let Err(e) = self.stream_logs(docker, &container, &name).await {
+        if let Err(e) = self.stream_logs(docker, &container, &self.name.clone().unwrap()).await {
             error!("Failed to stream logs: {}", e);
             return;
         }
-        info!("Job {} completed.", name);
+        info!("Job {} completed.", &self.name.clone().unwrap());
     }
     
     async fn pull_image(&self, docker: &Docker) -> Result<(), bollard::errors::Error> {
