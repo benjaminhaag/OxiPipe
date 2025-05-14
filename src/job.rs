@@ -8,8 +8,9 @@ use futures::StreamExt;
 use std::fs::File;
 use std::io::Write;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
+    pub name: Option<String>,
     pub image: String,
     pub command: Vec<String>,
     pub environment: Option<Vec<String>>,

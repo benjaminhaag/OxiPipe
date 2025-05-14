@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::job::Job;
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pipeline {
     pub jobs: HashMap<String, Job>
 }

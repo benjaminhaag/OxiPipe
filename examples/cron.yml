@@ -5,6 +5,14 @@ jobs:
       - "NAME=Benny"
     command: ["sh", "-c", "echo Hello"]
     schedule: "@every 10s"
+    triggers:
+     - following
+
+  following:
+    image: alpine:latest
+    environment:
+      - "NAME=Benny"
+    command: ["sh", "-c", "echo Hello"]
 
   minute:
     image: alpine:latest
