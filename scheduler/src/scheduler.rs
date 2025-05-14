@@ -1,10 +1,9 @@
 
-use crate::{job::Job, job_queue::JobQueue};
-use bollard::{Docker, container::*, models::*};
-use std::default::Default;
+use core::{job_queue::JobQueue};
+use bollard::{Docker};
 use tracing::{info, error};
 
-use crate::pipeline::Pipeline;
+use core::pipeline::Pipeline;
 
 pub async fn start(queue: JobQueue, pipeline:Pipeline) {
     let docker = Docker::connect_with_local_defaults().unwrap();

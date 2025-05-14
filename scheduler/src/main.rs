@@ -1,25 +1,15 @@
-use log::{info, error};
-use bollard::Docker;
-use bollard::container::{Config, CreateContainerOptions, StartContainerOptions, LogsOptions};
-use bollard::models::HostConfig;
-use futures::StreamExt;
-use std::collections::{HashMap, VecDeque};
-use std::path::Path;
-use std::fs;
+use log::{info};
+use std::collections::{HashMap};
 
-mod pipeline;
-mod job;
 mod schedule;
-mod job_queue;
 
 mod chroniq;
 mod web;
 mod scheduler;
 
-use pipeline::Pipeline;
-use job::Job;
+use core::pipeline::Pipeline;
 use schedule::Schedule;
-use job_queue::JobQueue;
+use core::job_queue::JobQueue;
 
 use tracing_subscriber;
 
