@@ -10,4 +10,3 @@ serde_yaml.workspace = true
 bollard.workspace = true
 futures.workspace = true
 tracing.workspace = true
-clap.workspace = true

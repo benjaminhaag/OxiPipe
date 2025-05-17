@@ -51,3 +51,8 @@ This project is under active development. The MVP will focus on:
 - Logging and artifacts
 
 
+## Example usage
+
+```
+docker container run --rm -e RUST_LOG=debug -v /var/run/docker.sock:/var/run/docker.sock oxipipe
+```

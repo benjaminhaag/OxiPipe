@@ -1,0 +1,13 @@
+services:
+
+  scheduler:
+    build: .
+    image: oxipipe
+    environment:
+      - RUST_LOG=debug
+    volumes:
+      - ./examples:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["oxipipe", "--pipeline", "/app/cron.yml"]
+    ports:
+      - "8080:8080"
