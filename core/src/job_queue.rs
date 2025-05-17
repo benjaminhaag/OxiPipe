@@ -1,5 +1,5 @@
 use crate::job::Job;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::{Mutex, Notify};
 // use uuid::Uuid;

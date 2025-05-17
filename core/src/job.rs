@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use log::{debug, info, error};
+use tracing::{debug, info, error};
 use bollard::Docker;
-use bollard::container::{Config, CreateContainerOptions, StartContainerOptions, LogsOptions, LogOutput};
+use bollard::container::{Config, CreateContainerOptions, StartContainerOptions, LogsOptions};
 use bollard::models::HostConfig;
 use futures::StreamExt;
 use std::fs::File;
@@ -25,43 +25,43 @@ impl Job {
     pub async fn run(&self, docker: &Docker) {
         info!("starting job {}", self.name.clone().unwrap());
 
-        // // Pull the image if not present
-        // if let Err(e) = self.pull_image(docker).await {
-        //     error!("Error pulling image: {}", e);
-        //     return;
-        // }
+        // Pull the image if not present
+        if let Err(e) = self.pull_image(docker).await {
+            error!("Error pulling image: {}", e);
+            return;
+        }
 
-        // // Create container
+        // Create container
         
-        // let mounts = match self.prepare_mounts(&self.name.clone().unwrap()) {
-        //     Ok(m) => m,
-        //     Err(e) => {
-        //         error!("Failed to prepare mounts: {}", e);
-        //         return;
-        //     }
-        // };
+        let mounts = match self.prepare_mounts(&self.name.clone().unwrap()) {
+            Ok(m) => m,
+            Err(e) => {
+                error!("Failed to prepare mounts: {}", e);
+                return;
+            }
+        };
 
 
-        // let container = match self.create_container(docker, &self.name.clone().unwrap(), mounts).await {
-        //     Ok(id) => id,
-        //     Err(e) => {
-        //         error!("Error creating container: {}", e);
-        //         return;
-        //     }
-        // };
+        let container = match self.create_container(docker, &self.name.clone().unwrap(), mounts).await {
+            Ok(id) => id,
+            Err(e) => {
+                error!("Error creating container: {}", e);
+                return;
+            }
+        };
 
-        // // Start the container
-        // info!("Starting container: {}", container);
-        // if let Err(e) = docker.start_container(&container, None::<StartContainerOptions<String>>).await {
-        //     error!("Error starting container: {}", e);
-        //     return;
-        // }
+        // Start the container
+        info!("Starting container: {}", container);
+        if let Err(e) = docker.start_container(&container, None::<StartContainerOptions<String>>).await {
+            error!("Error starting container: {}", e);
+            return;
+        }
 
-        // // Get logs
-        // if let Err(e) = self.stream_logs(docker, &container, &self.name.clone().unwrap()).await {
-        //     error!("Failed to stream logs: {}", e);
-        //     return;
-        // }
+        // Get logs
+        if let Err(e) = self.stream_logs(docker, &container, &self.name.clone().unwrap()).await {
+            error!("Failed to stream logs: {}", e);
+            return;
+        }
         info!("Job {} completed.", &self.name.clone().unwrap());
     }
     
