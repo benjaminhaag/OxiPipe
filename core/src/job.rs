@@ -4,9 +4,12 @@ use tracing::{debug, info, error};
 use bollard::Docker;
 use bollard::container::{Config, CreateContainerOptions, StartContainerOptions, LogsOptions};
 use bollard::models::HostConfig;
+use bollard::image::ListImagesOptions;
 use futures::StreamExt;
 use std::fs::File;
 use std::io::Write;
+use std::env;
+use regex::Regex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
@@ -20,19 +23,43 @@ pub struct Job {
     pub dependencies: Option<Vec<String>>
 }
 
+fn expand_variables(input: &str) -> String {
+    let re = Regex::new(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+
+    re.replace_all(input, |caps: &regex::Captures| {
+        let key = &caps[1];
+        env::var(key).unwrap_or_else(|_| "".to_string())
+    }).into_owned()
+}
+
+fn expand_env_map(raw: &Option<Vec<String>>) -> Option<Vec<String>> {
+
+    match raw{
+        Some(raw) => {
+            let mut expanded: Vec<String> = Vec::new();
+            for variable in raw {
+                expanded.push(expand_variables(variable))
+            }
+            Some(expanded)
+        },
+        None => None
+    }
+}
 
 impl Job {
     pub async fn run(&self, docker: &Docker) {
         info!("starting job {}", self.name.clone().unwrap());
 
         // Pull the image if not present
-        if let Err(e) = self.pull_image(docker).await {
-            error!("Error pulling image: {}", e);
-            return;
+        if !self.image_exists(docker).await {
+            // Pull the image if it doesn't exist
+            if let Err(e) = self.pull_image(docker).await {
+                error!("Error pulling image: {}", e);
+                return;
+            }
         }
 
         // Create container
-        
         let mounts = match self.prepare_mounts(&self.name.clone().unwrap()) {
             Ok(m) => m,
             Err(e) => {
@@ -90,6 +117,25 @@ impl Job {
         Ok(())
     }
 
+    async fn image_exists(&self, docker: &Docker) -> bool {
+        match docker.list_images(Some(ListImagesOptions::<String> {
+            all: true,
+            ..Default::default()
+        })).await {
+            Ok(images) => {
+                images.iter().any(|img| {
+                    let tags = &img.repo_tags;
+                    tags.iter().any(|tag| tag == &self.image)
+                })
+            }
+            Err(e) => {
+                error!("Failed to list images: {}", e);
+                false // Assume not present if listing failed
+            }
+        }
+
+    }
+
     fn prepare_mounts(&self, job_name: &str) -> Result<Vec<String>, std::io::Error> {
         let mut mounts: Vec<String> = Vec::new();
 
@@ -122,7 +168,7 @@ impl Job {
         let config = Config {
             image: Some(self.image.clone()),
             cmd: Some(self.command.clone()),
-            env: self.environment.clone(),
+            env: expand_env_map(&self.environment),
             host_config: Some(HostConfig {
                 auto_remove: Some(true),
                 binds: Some(mounts),

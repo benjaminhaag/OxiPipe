@@ -2,7 +2,7 @@ jobs:
   hello:
     image: alpine:latest
     environment:
-      - "NAME=Benny"
+      - "NAME=${NAME}"
     command: ["sh", "-c", "echo $NAME > /workspace/test.txt"]
     artifacts: "/workspace"
     triggers: 

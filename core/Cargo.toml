@@ -10,3 +10,5 @@ serde_yaml.workspace = true
 bollard.workspace = true
 futures.workspace = true
 tracing.workspace = true
+dotenv.workspace = true
+regex.workspace = true

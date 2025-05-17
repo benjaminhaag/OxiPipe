@@ -1,6 +1,7 @@
 use clap::Parser;
 use tracing::{info, error};
 use std::collections::{HashMap};
+use dotenv::dotenv;
 
 mod schedule;
 
@@ -21,6 +22,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
     info!("Starting OxiPipe...");
 
+    dotenv().ok();
+    
     let args = Args::parse();
 
     let mut pipeline = Pipeline::from_file(&args.pipeline)?;
